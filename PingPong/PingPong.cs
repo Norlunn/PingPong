@@ -76,8 +76,24 @@ namespace PingPong
         private void GameTimer_Tick(object sender, EventArgs e)
         {
             // Do game logic
+            player1.Move();
+            player2.Move();
+            ball.Move();
+
+            CheckCollision();
+
             Draw();
             tickCount++;
+        }
+
+        private void CheckCollision()
+        {
+
+        }
+
+        private void CheckOutOfBounds()
+        {
+
         }
 
         private void Draw()
@@ -85,12 +101,18 @@ namespace PingPong
             if (Backbuffer != null)
             {
                 using var g = Graphics.FromImage(Backbuffer);
+                
                 g.Clear(Color.Black);
                 g.TextRenderingHint = TextRenderingHint.AntiAlias;
 
+                // Draw middle line
+                g.DrawLine(Pens.White, new Point(this.ClientSize.Width / 2, 0), new Point(this.ClientSize.Width / 2, this.ClientSize.Height));
+
+                // Draw players
                 g.FillRectangle(Brushes.White, player1.Shape);
                 g.FillRectangle(Brushes.White, player2.Shape);
 
+                // Draw ping pong ball
                 g.FillEllipse(Brushes.White, ball.Shape);
 
                 Invalidate();
@@ -101,16 +123,36 @@ namespace PingPong
         {
             if (e.KeyCode == Keys.Up)
             {
+                player2.YVelocity = -5;
             }
 
             if (e.KeyCode == Keys.Down)
             {
+                player2.YVelocity = 5;
+            }
+
+            if (e.KeyCode == Keys.A)
+            {
+                player1.YVelocity = -5;
+            }
+
+            if (e.KeyCode == Keys.Z)
+            {
+                player1.YVelocity = 5;
             }
         }
 
         private void KeyIsUp(object sender, KeyEventArgs e)
         {
-            
+            if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)
+            {
+                player2.YVelocity = 0;
+            }
+
+            if (e.KeyCode == Keys.A || e.KeyCode == Keys.Z)
+            {
+                player1.YVelocity = 0;
+            }
         }
     }
 
@@ -122,9 +164,6 @@ namespace PingPong
         public Rectangle Shape { get; set; }
         public int XVelocity { get; set; }
         public int YVelocity { get; set; }
-        public double XAcceleration { get; set; }
-        public double YAcceleration { get; set; }
-        public double VelocityLimit { get; set; }
     }
 
     public class PongPlayer : GameObject
@@ -136,7 +175,7 @@ namespace PingPong
             Position = startPosition;
             this.form = form;
 
-            Size = new Size(10, 30);
+            Size = new Size(8, 30);
 
             if (Position == "Left")
             {
@@ -144,7 +183,7 @@ namespace PingPong
             }
             else if (Position == "Right")
             {
-                Location = new Point(10, form.Width - 20);
+                Location = new Point(form.ClientSize.Width - 30, form.ClientSize.Height - 40);
             }
 
             Shape = new Rectangle(Location, Size);
@@ -152,7 +191,13 @@ namespace PingPong
 
         public void Move()
         {
+            int newY = Location.Y + YVelocity;
+            if (newY > 0 && newY < (form.ClientSize.Height - Size.Height))
+            {
+                Location = new Point(Location.X, newY);
+            }
 
+            Shape = new Rectangle(Location, Size);
         }
     }
 
@@ -162,16 +207,46 @@ namespace PingPong
         {
             this.form = form;
 
-            Size = new Size(10, 10);
+            Size = new Size(15, 15);
 
-            Location = new Point((form.Height / 2) - 5, (form.Width / 2) - 5);
+            Location = new Point((form.ClientSize.Width / 2) - 5, (form.ClientSize.Height / 2) - 5);
 
             Shape = new Rectangle(Location, Size);
+
+            Random rnd = new Random();
+            if (rnd.Next(0, 2) == 1)
+            {
+                XVelocity = 5;
+            }
+            else
+            {
+                XVelocity = -5;
+            }
+
+            if (rnd.Next(0, 2) == 1)
+            {
+                YVelocity = 5;
+            }
+            else
+            {
+                YVelocity = -5;
+            }
         }
 
         public void Move()
         {
+            int newX = Location.X + XVelocity;
+            int newY = Location.Y + YVelocity;
 
+            if (newY < 0 || newY > form.ClientSize.Height)
+            {
+                YVelocity *= -1;
+                newY = Location.Y + YVelocity;
+            }
+
+            Location = new Point(newX, newY);
+
+            Shape = new Rectangle(Location, Size);
         }
     }
 }
