@@ -20,6 +20,7 @@ namespace PingPong
         private PongPlayer player1;
         private PongPlayer player2;
         private PongBall ball;
+        private Font font = new Font("Segoe UI", 48);
 
         public PingPong()
         {
@@ -47,7 +48,6 @@ namespace PingPong
             Paint += new PaintEventHandler(FormPaint);
             KeyDown += new KeyEventHandler(KeyIsDown);
             KeyUp += new KeyEventHandler(KeyIsUp);
-
 
             // Create objects
             player1 = new PongPlayer(this, "Left");
@@ -81,6 +81,7 @@ namespace PingPong
             ball.Move();
 
             CheckCollision();
+            CheckOutOfBounds();
 
             Draw();
             tickCount++;
@@ -88,12 +89,26 @@ namespace PingPong
 
         private void CheckCollision()
         {
-
+            if (player1.Shape.IntersectsWith(ball.Shape) || 
+                player2.Shape.IntersectsWith(ball.Shape))
+            {
+                ball.XVelocity *= -1;
+            }
         }
 
         private void CheckOutOfBounds()
         {
+            if (ball.Location.X < 0)
+            {
+                player2.Score += 1;
+                ball.Start();
+            }
 
+            if (ball.Location.X > (this.ClientSize.Width + 10))
+            {
+                player1.Score += 1;
+                ball.Start();
+            }
         }
 
         private void Draw()
@@ -107,6 +122,11 @@ namespace PingPong
 
                 // Draw middle line
                 g.DrawLine(Pens.White, new Point(this.ClientSize.Width / 2, 0), new Point(this.ClientSize.Width / 2, this.ClientSize.Height));
+
+                // Draw text
+
+                g.DrawString(player1.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) - 100, 10));
+                g.DrawString(player2.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) + 50, 10));
 
                 // Draw players
                 g.FillRectangle(Brushes.White, player1.Shape);
@@ -169,6 +189,7 @@ namespace PingPong
     public class PongPlayer : GameObject
     {
         public string Position { get; set; }
+        public int Score = 0;
 
         public PongPlayer(Form form, string startPosition)
         {
@@ -209,9 +230,30 @@ namespace PingPong
 
             Size = new Size(15, 15);
 
-            Location = new Point((form.ClientSize.Width / 2) - 5, (form.ClientSize.Height / 2) - 5);
+            Start();
 
             Shape = new Rectangle(Location, Size);
+        }
+
+        public void Move()
+        {
+            int newX = Location.X + XVelocity;
+            int newY = Location.Y + YVelocity;
+
+            if (newY < 0 || newY > form.ClientSize.Height)
+            {
+                YVelocity *= -1;
+                newY = Location.Y + YVelocity;
+            }
+
+            Location = new Point(newX, newY);
+
+            Shape = new Rectangle(Location, Size);
+        }
+
+        public void Start()
+        {
+            Location = new Point((form.ClientSize.Width / 2) - 5, (form.ClientSize.Height / 2) - 5);
 
             Random rnd = new Random();
             if (rnd.Next(0, 2) == 1)
@@ -231,22 +273,6 @@ namespace PingPong
             {
                 YVelocity = -5;
             }
-        }
-
-        public void Move()
-        {
-            int newX = Location.X + XVelocity;
-            int newY = Location.Y + YVelocity;
-
-            if (newY < 0 || newY > form.ClientSize.Height)
-            {
-                YVelocity *= -1;
-                newY = Location.Y + YVelocity;
-            }
-
-            Location = new Point(newX, newY);
-
-            Shape = new Rectangle(Location, Size);
         }
     }
 }
