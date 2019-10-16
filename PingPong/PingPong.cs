@@ -15,16 +15,43 @@ namespace PingPong
     {
         private Bitmap Backbuffer;
         private Timer GameTimer;
-        private long tickCount = 0;
-
         private PongPlayer player1;
         private PongPlayer player2;
         private PongBall ball;
         private Font font = new Font("Segoe UI", 48);
+        private Font smallFont = new Font("Segoe UI", 24);
+        private int scoreLimit = 10;
+        private int _speedMultiplier = 2;
+        public int SpeedMultiplier
+        {
+            get
+            {
+                return _speedMultiplier;
+            }
+            set
+            {
+                _speedMultiplier = value;
+                if (ball.XVelocity < 0)
+                    ball.XVelocity = ball.BaseVelocity * value * -1;
+                else
+                    ball.XVelocity = ball.BaseVelocity * value;
+
+                if (ball.YVelocity < 0)
+                    ball.YVelocity = ball.BaseVelocity * value * -1;
+                else
+                    ball.YVelocity = ball.BaseVelocity * value;
+            }
+        }
+
+        private bool showHelp = false;
+        private bool gameWon = false;
+        private long gameTicks = 0;
 
         public PingPong()
         {
-            InitializeComponent();
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1200, 700);
+            this.Text = "PingPong";
 
             SetStyle(
             ControlStyles.UserPaint |
@@ -38,7 +65,7 @@ namespace PingPong
             GameTimer = new Timer
             {
                 Enabled = true,
-                Interval = 20
+                Interval = 10
             };
             GameTimer.Tick += new System.EventHandler(GameTimer_Tick);
 
@@ -52,7 +79,7 @@ namespace PingPong
             // Create objects
             player1 = new PongPlayer(this, "Left");
             player2 = new PongPlayer(this, "Right");
-            ball = new PongBall(this);
+            ball = new PongBall(this, SpeedMultiplier);
         }
 
         private void FormCreateBackBuffer(object sender, EventArgs e)
@@ -75,16 +102,19 @@ namespace PingPong
 
         private void GameTimer_Tick(object sender, EventArgs e)
         {
-            // Do game logic
-            player1.Move();
-            player2.Move();
-            ball.Move();
+            if (!gameWon && !showHelp)
+            {
+                // Do game logic
+                player1.Move();
+                player2.Move();
+                ball.Move();
 
-            CheckCollision();
-            CheckOutOfBounds();
+                CheckCollision();
+                CheckOutOfBounds();
+            }
 
             Draw();
-            tickCount++;
+            gameTicks++;
         }
 
         private void CheckCollision()
@@ -101,13 +131,18 @@ namespace PingPong
             if (ball.Location.X < 0)
             {
                 player2.Score += 1;
-                ball.Start();
+                ball.Start(SpeedMultiplier);
             }
 
             if (ball.Location.X > (this.ClientSize.Width + 10))
             {
                 player1.Score += 1;
-                ball.Start();
+                ball.Start(SpeedMultiplier);
+            }
+
+            if (player1.Score >= scoreLimit || player2.Score >= scoreLimit)
+            {
+                gameWon = true;
             }
         }
 
@@ -119,22 +154,65 @@ namespace PingPong
                 
                 g.Clear(Color.Black);
                 g.TextRenderingHint = TextRenderingHint.AntiAlias;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-                // Draw middle line
-                g.DrawLine(Pens.White, new Point(this.ClientSize.Width / 2, 0), new Point(this.ClientSize.Width / 2, this.ClientSize.Height));
+                if (gameWon)
+                {
+                    if (player1.Score > player2.Score)
+                    {
+                        g.DrawString("Player to the left won!", font, Brushes.White, new Point(95, 100));
+                    }
+                    else
+                    {
+                        g.DrawString("Player to the right won!", font, Brushes.White, new Point(95, 100));
+                    }
 
-                // Draw text
+                    g.DrawString("Press 'R' to play again", smallFont, Brushes.White, new RectangleF(
+                        new PointF(100, 200),
+                        new SizeF(900, 200)
+                    ));
+                }
+                else if (showHelp)
+                {
+                    g.DrawString("Help", font, Brushes.White, new Point(95, 100));
+                    g.DrawString("Left player keyboard: A (up), Z (down)", smallFont, Brushes.White, new RectangleF(
+                        new PointF(100, 200),
+                        new SizeF(900, 200)
+                    ));
+                    g.DrawString("Right player keyboard: Arrow up (up), Arrow down (down)", smallFont, Brushes.White, new RectangleF(
+                        new PointF(100, 260),
+                        new SizeF(900, 200)
+                    ));
+                    g.DrawString("Press 1, 2, or 3 to change game speed", smallFont, Brushes.White, new RectangleF(
+                        new PointF(100, 320),
+                        new SizeF(900, 200)
+                    ));
+                }
+                else
+                {
+                    // Draw middle line
+                    g.DrawLine(Pens.White, new Point(this.ClientSize.Width / 2, 0), new Point(this.ClientSize.Width / 2, this.ClientSize.Height));
 
-                g.DrawString(player1.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) - 100, 10));
-                g.DrawString(player2.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) + 50, 10));
+                    // Draw text
 
-                // Draw players
-                g.FillRectangle(Brushes.White, player1.Shape);
-                g.FillRectangle(Brushes.White, player2.Shape);
+                    g.DrawString(player1.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) - 100, 10));
+                    g.DrawString(player2.Score + "", font, Brushes.White, new Point((this.ClientSize.Width / 2) + 50, 10));
 
-                // Draw ping pong ball
-                g.FillEllipse(Brushes.White, ball.Shape);
+                    // Draw players
+                    g.FillRectangle(Brushes.White, player1.Shape);
+                    g.FillRectangle(Brushes.White, player2.Shape);
 
+                    // Draw ping pong ball
+                    g.FillEllipse(Brushes.White, ball.Shape);
+
+                    if (gameTicks < 400)
+                    {
+                        g.DrawString("Press 'H' for help", smallFont, Brushes.White, new RectangleF(
+                        new PointF((this.ClientSize.Width / 2) - 130, this.ClientSize.Height - 50),
+                        new SizeF(260, 50)
+                    ));
+                    }
+                }
                 Invalidate();
             }
         }
@@ -143,22 +221,52 @@ namespace PingPong
         {
             if (e.KeyCode == Keys.Up)
             {
-                player2.YVelocity = -5;
+                player2.YVelocity = player2.BaseVelocity * SpeedMultiplier * -1;
             }
 
             if (e.KeyCode == Keys.Down)
             {
-                player2.YVelocity = 5;
+                player2.YVelocity = player2.BaseVelocity * SpeedMultiplier;
             }
 
             if (e.KeyCode == Keys.A)
             {
-                player1.YVelocity = -5;
+                player1.YVelocity = player1.BaseVelocity * SpeedMultiplier * -1;
             }
 
             if (e.KeyCode == Keys.Z)
             {
-                player1.YVelocity = 5;
+                player1.YVelocity = player1.BaseVelocity * SpeedMultiplier;
+            }
+
+            if (e.KeyCode == Keys.D1)
+            {
+                SpeedMultiplier = 1;
+            }
+
+            if (e.KeyCode == Keys.D2)
+            {
+                SpeedMultiplier = 2;
+            }
+
+            if (e.KeyCode == Keys.D3)
+            {
+                SpeedMultiplier = 3;
+            }
+
+            if (e.KeyCode == Keys.H)
+            {
+                showHelp = !showHelp;
+            }
+
+            if (gameWon && e.KeyCode == Keys.R)
+            {
+                gameWon = false;
+                showHelp = false;
+                player1 = new PongPlayer(this, "Left");
+                player2 = new PongPlayer(this, "Right");
+                gameTicks = 0;
+                ball = new PongBall(this, SpeedMultiplier);
             }
         }
 
@@ -184,6 +292,8 @@ namespace PingPong
         public Rectangle Shape { get; set; }
         public int XVelocity { get; set; }
         public int YVelocity { get; set; }
+
+        public int BaseVelocity { get; set; }
     }
 
     public class PongPlayer : GameObject
@@ -196,7 +306,7 @@ namespace PingPong
             Position = startPosition;
             this.form = form;
 
-            Size = new Size(8, 30);
+            Size = new Size(8, 45);
 
             if (Position == "Left")
             {
@@ -204,10 +314,12 @@ namespace PingPong
             }
             else if (Position == "Right")
             {
-                Location = new Point(form.ClientSize.Width - 30, form.ClientSize.Height - 40);
+                Location = new Point(form.ClientSize.Width - 30, form.ClientSize.Height - 55);
             }
 
             Shape = new Rectangle(Location, Size);
+            
+            BaseVelocity = 3;
         }
 
         public void Move()
@@ -224,14 +336,16 @@ namespace PingPong
 
     public class PongBall : GameObject
     {
-        public PongBall(Form form)
+        public PongBall(Form form, int speedMultiplier = 2)
         {
             this.form = form;
 
             Size = new Size(15, 15);
-
-            Start();
-
+            
+            BaseVelocity = 3;
+            
+            Start(speedMultiplier);
+            
             Shape = new Rectangle(Location, Size);
         }
 
@@ -251,27 +365,27 @@ namespace PingPong
             Shape = new Rectangle(Location, Size);
         }
 
-        public void Start()
+        public void Start(int speedMultiplier = 2)
         {
             Location = new Point((form.ClientSize.Width / 2) - 5, (form.ClientSize.Height / 2) - 5);
 
             Random rnd = new Random();
             if (rnd.Next(0, 2) == 1)
             {
-                XVelocity = 5;
+                XVelocity = BaseVelocity * speedMultiplier;
             }
             else
             {
-                XVelocity = -5;
+                XVelocity = -1 * BaseVelocity * speedMultiplier;
             }
 
             if (rnd.Next(0, 2) == 1)
             {
-                YVelocity = 5;
+                YVelocity = BaseVelocity * speedMultiplier;
             }
             else
             {
-                YVelocity = -5;
+                YVelocity = -1 * BaseVelocity * speedMultiplier;
             }
         }
     }
