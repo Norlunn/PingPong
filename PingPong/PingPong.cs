@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Drawing.Text;
 using System.Linq;
+using System.Media;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -46,6 +47,8 @@ namespace PingPong
         private bool showHelp = false;
         private bool gameWon = false;
         private long gameTicks = 0;
+
+        private SoundPlayer hitSound = new SoundPlayer(Properties.Resources.pingponghit);
 
         public PingPong()
         {
@@ -123,6 +126,7 @@ namespace PingPong
                 player2.Shape.IntersectsWith(ball.Shape))
             {
                 ball.XVelocity *= -1;
+                hitSound.Play();
             }
         }
 
